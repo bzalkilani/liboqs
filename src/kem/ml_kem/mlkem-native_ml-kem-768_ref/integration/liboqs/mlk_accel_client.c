@@ -28,7 +28,7 @@ static uint8_t mlk_accel_buf[4 + MLK_ACCEL_MAX_IN * 2];
 
 struct mlk_accel_rec
 {
-  uint64_t host_wait_ns, rtt_ns, board_wait_ns, board_dma_ns;
+  uint64_t host_wait_ns, connect_ns, rtt_ns, board_wait_ns, board_dma_ns;
   uint32_t op, nin;
 };
 
@@ -58,12 +58,15 @@ static void mlk_accel_trace_flush(void)
   {
     return;
   }
-  fprintf(f, "op,in_words,host_wait_ns,rtt_ns,board_wait_ns,board_dma_ns\n");
+  fprintf(f,
+          "op,in_words,host_wait_ns,connect_ns,rtt_ns,board_wait_ns,"
+          "board_dma_ns\n");
   for (i = 0; i < mlk_accel_nrec; i++)
   {
     struct mlk_accel_rec *r = &mlk_accel_recs[i];
-    fprintf(f, "%u,%u,%llu,%llu,%llu,%llu\n", r->op, r->nin,
-            (unsigned long long)r->host_wait_ns, (unsigned long long)r->rtt_ns,
+    fprintf(f, "%u,%u,%llu,%llu,%llu,%llu,%llu\n", r->op, r->nin,
+            (unsigned long long)r->host_wait_ns,
+            (unsigned long long)r->connect_ns, (unsigned long long)r->rtt_ns,
             (unsigned long long)r->board_wait_ns,
             (unsigned long long)r->board_dma_ns);
   }
@@ -94,8 +97,8 @@ static void mlk_accel_trace_init(void)
 }
 
 static void mlk_accel_record(uint32_t op, uint32_t nin, uint64_t host_wait_ns,
-                             uint64_t rtt_ns, uint64_t board_wait_ns,
-                             uint64_t board_dma_ns)
+                             uint64_t connect_ns, uint64_t rtt_ns,
+                             uint64_t board_wait_ns, uint64_t board_dma_ns)
 {
   struct mlk_accel_rec *r;
 
@@ -107,6 +110,7 @@ static void mlk_accel_record(uint32_t op, uint32_t nin, uint64_t host_wait_ns,
   r = &mlk_accel_recs[mlk_accel_nrec++];
   r->op = op;
   r->nin = nin;
+  r->connect_ns = connect_ns;
   r->host_wait_ns = host_wait_ns;
   r->rtt_ns = rtt_ns;
   r->board_wait_ns = board_wait_ns;
@@ -187,7 +191,7 @@ static void mlk_accel_connect(void)
 static void mlk_accel_op(uint32_t op, const int16_t *in, uint32_t nin,
                          int16_t *out)
 {
-  uint64_t t_enter = 0, t_send = 0, t_done = 0;
+  uint64_t t_enter = 0, t_send = 0, t_done = 0, connect_ns = 0;
   uint64_t board[2] = {0, 0};
 
   if (mlk_accel_trace < 0)
@@ -203,7 +207,12 @@ static void mlk_accel_op(uint32_t op, const int16_t *in, uint32_t nin,
 
   if (mlk_accel_fd < 0)
   {
+    uint64_t c0 = mlk_accel_trace ? mlk_accel_now_ns() : 0;
     mlk_accel_connect();
+    if (mlk_accel_trace)
+    {
+      connect_ns = mlk_accel_now_ns() - c0;
+    }
   }
 
   {
@@ -232,8 +241,8 @@ static void mlk_accel_op(uint32_t op, const int16_t *in, uint32_t nin,
       mlk_accel_fail("trace read");
     }
     t_done = mlk_accel_now_ns();
-    mlk_accel_record(op, nin, t_send - t_enter, t_done - t_send, board[0],
-                     board[1]);
+    mlk_accel_record(op, nin, (t_send - t_enter) - connect_ns, connect_ns,
+                     t_done - t_send, board[0], board[1]);
   }
 
   pthread_mutex_unlock(&mlk_accel_lock);
