@@ -5,6 +5,9 @@
 
 set(_ML_KEM_OBJS "")
 
+option(OQS_ML_KEM_768_FPGA_OFFLOAD
+  "Route ML-KEM-768 NTT, invNTT and k3 basemul-acc to the FPGA accelerator" OFF)
+
 if(OQS_ENABLE_KEM_ml_kem_512)
     add_library(ml_kem_512_ref OBJECT kem_ml_kem_512.c mlkem-native_ml-kem-512_ref/mlkem/src/compress.c mlkem-native_ml-kem-512_ref/mlkem/src/debug.c mlkem-native_ml-kem-512_ref/mlkem/src/indcpa.c mlkem-native_ml-kem-512_ref/mlkem/src/kem.c mlkem-native_ml-kem-512_ref/mlkem/src/poly.c mlkem-native_ml-kem-512_ref/mlkem/src/poly_k.c mlkem-native_ml-kem-512_ref/mlkem/src/sampling.c mlkem-native_ml-kem-512_ref/mlkem/src/verify.c)
     target_compile_options(ml_kem_512_ref PUBLIC -DMLK_CONFIG_PARAMETER_SET=512 -DMLK_CONFIG_FILE="../../integration/liboqs/config_c.h")
@@ -46,7 +49,11 @@ if(OQS_ENABLE_KEM_ml_kem_512_icicle_cuda)
 endif()
 
 if(OQS_ENABLE_KEM_ml_kem_768)
-    add_library(ml_kem_768_ref OBJECT kem_ml_kem_768.c mlkem-native_ml-kem-768_ref/mlkem/src/compress.c mlkem-native_ml-kem-768_ref/mlkem/src/debug.c mlkem-native_ml-kem-768_ref/mlkem/src/indcpa.c mlkem-native_ml-kem-768_ref/mlkem/src/kem.c mlkem-native_ml-kem-768_ref/mlkem/src/poly.c mlkem-native_ml-kem-768_ref/mlkem/src/poly_k.c mlkem-native_ml-kem-768_ref/mlkem/src/sampling.c mlkem-native_ml-kem-768_ref/mlkem/src/verify.c mlkem-native_ml-kem-768_ref/integration/liboqs/mlk_accel_client.c)
+    add_library(ml_kem_768_ref OBJECT kem_ml_kem_768.c mlkem-native_ml-kem-768_ref/mlkem/src/compress.c mlkem-native_ml-kem-768_ref/mlkem/src/debug.c mlkem-native_ml-kem-768_ref/mlkem/src/indcpa.c mlkem-native_ml-kem-768_ref/mlkem/src/kem.c mlkem-native_ml-kem-768_ref/mlkem/src/poly.c mlkem-native_ml-kem-768_ref/mlkem/src/poly_k.c mlkem-native_ml-kem-768_ref/mlkem/src/sampling.c mlkem-native_ml-kem-768_ref/mlkem/src/verify.c)
+    if(OQS_ML_KEM_768_FPGA_OFFLOAD)
+        target_sources(ml_kem_768_ref PRIVATE mlkem-native_ml-kem-768_ref/integration/liboqs/mlk_accel_client.c)
+        target_compile_options(ml_kem_768_ref PUBLIC -DMLK_ACCEL_OFFLOAD)
+    endif()
     target_compile_options(ml_kem_768_ref PUBLIC -DMLK_CONFIG_PARAMETER_SET=768 -DMLK_CONFIG_FILE="../../integration/liboqs/config_c.h")
     target_include_directories(ml_kem_768_ref PRIVATE ${CMAKE_CURRENT_LIST_DIR}/mlkem-native_ml-kem-768_ref)
     target_include_directories(ml_kem_768_ref PRIVATE ${PROJECT_SOURCE_DIR}/src/common/pqclean_shims)

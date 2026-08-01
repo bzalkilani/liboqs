@@ -87,9 +87,11 @@
 #define MLK_CONFIG_FIPS202X4_CUSTOM_HEADER \
   "../../integration/liboqs/fips202x4_glue.h"
 
+#if defined(MLK_ACCEL_OFFLOAD)
 #define MLK_CONFIG_USE_NATIVE_BACKEND_ARITH
 #define MLK_CONFIG_ARITH_BACKEND_FILE \
   "../../integration/liboqs/mlk_accel_backend.h"
+#endif
 
 /******************************************************************************
  * Name:        MLK_CONFIG_CUSTOM_ZEROIZE
